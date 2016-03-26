@@ -924,8 +924,8 @@ is divided into following sections:
     <target depends="init,deps-jar,-pre-pre-compile,-pre-compile, -copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile">
         <j2seproject3:javac gensrcdir="${build.generated.sources.dir}"/>
         <copy todir="${build.classes.dir}">
-            <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
-            <fileset dir="${src.res.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
+            <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/> 
+            <fileset dir="${src.res.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/> 
         </copy>
     </target>
     <target if="has.persistence.xml" name="-copy-persistence-xml">

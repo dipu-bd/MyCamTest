@@ -36,7 +36,7 @@ import marvin.video.MarvinVideoInterface;
 import marvin.video.MarvinVideoInterfaceException;
 
 /**
- *
+ * 
  * @author Dipu
  */
 public class SimpleVideoTest implements Runnable {
@@ -44,7 +44,7 @@ public class SimpleVideoTest implements Runnable {
     static {
         MarvinDefinitions.setImagePluginPath("./res/marvin/plugins/image/");
     }
-
+	
     private Thread mThread;
     private MarvinImage currentImage;
     private volatile boolean processing;
