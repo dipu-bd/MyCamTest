@@ -23,6 +23,8 @@ import java.io.File;
 import java.util.Vector;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import marvin.MarvinDefinitions;
 import marvin.gui.MarvinImagePanel;
 import marvin.image.MarvinImage;
@@ -36,7 +38,7 @@ import marvin.video.MarvinVideoInterface;
 import marvin.video.MarvinVideoInterfaceException;
 
 /**
- * 
+ *
  * @author Dipu
  */
 public class SimpleVideoTest implements Runnable {
@@ -44,7 +46,7 @@ public class SimpleVideoTest implements Runnable {
     static {
         MarvinDefinitions.setImagePluginPath("./res/marvin/plugins/image/");
     }
-	
+
     private Thread mThread;
     private MarvinImage currentImage;
     private volatile boolean processing;
@@ -172,7 +174,7 @@ public class SimpleVideoTest implements Runnable {
 
     private MarvinImage compareRegions(MarvinImage img) {
 
-        final int sensibility = 30; // the lower the higher
+        final int sensibility = 50; // the lower the higher
 
         if (lastImage == null) {
             lastImage = img;
@@ -191,95 +193,49 @@ public class SimpleVideoTest implements Runnable {
         return img;
     }
 
-    int avg(int siz, int... arr) {
-        if (siz <= 0) {
-            return 0;
-        }
-        double sum = 0;
-        for (int i = 0; i < siz; ++i) {
-            sum += arr[i];
-        }
-        return (int) (Math.round(sum / arr.length));
+
+    {
+        useMyOwn.addListener((ObservableValue<? extends Object> observable, Object oldValue, Object newValue) -> {
+            averagePos = averageSIZ = 0;
+        });
     }
 
-    final int amask = 24;
-    final int rmask = 16;
-    final int gmask = 8;
+    int MAX_SIZ = 7;
+    int averagePos = 0, averageSIZ = 0;
+    MarvinImage[] averageImage = new MarvinImage[100];
 
-    int getAverage(int... rgb) {
-
-        final int TOLERANCE = 100;
-
-        int siz = rgb.length;
-        int[] aArr = new int[siz];
-        int[] rArr = new int[siz];
-        int[] gArr = new int[siz];
-        int[] bArr = new int[siz];
-
-        int j = 0;
-        for (int i = 0; i < siz; ++i) {
-            aArr[j] = (rgb[i] >> amask) & 255;
-            rArr[j] = (rgb[i] >> rmask) & 255;
-            gArr[j] = (rgb[i] >> gmask) & 255;
-            bArr[j] = (rgb[i]) & 255;
-            if (Math.abs(aArr[j] - aArr[i])
-                    + Math.abs(rArr[j] - rArr[i])
-                    + Math.abs(gArr[j] - gArr[i])
-                    + Math.abs(bArr[j] - bArr[i]) <= TOLERANCE) {
-                j++;
-            }
-        }
-
-        int a = avg(j, aArr);
-        int r = avg(j, rArr);
-        int g = avg(j, gArr);
-        int b = avg(j, bArr);
-
-        return (a << amask) | (r << rmask) | (g << gmask) | (b);
+    int avg(double a, double b) {
+        return (int) Math.floor(a * (averageSIZ - 1) + b) / averageSIZ;
     }
-
+    
     private MarvinImage MyOwnProcess(MarvinImage img) {
-        // set last image
-        if (lastImage == null) {
-            lastImage = img.clone();
-            return lastImage;
-        }
 
-        // validity check
         int w = img.getWidth();
         int h = img.getHeight();
-        if (lastImage.getWidth() != w || lastImage.getHeight() != h) {
-            lastImage = img.clone();
-            return lastImage;
-        }
-
-        // image overlapping
+        averageImage[averagePos] = img.clone();
+        averageSIZ = Math.max(1 + averagePos, averageSIZ);
+        averagePos = (1 + averagePos) % MAX_SIZ;
+         
         for (int x = 0; x < w; ++x) {
             for (int y = 0; y < h; ++y) {
-                int rgb = getAverage(
-                        lastImage.getIntColor(x, y),
-                        //img.getIntColor(w - x - 1, y) //flipped
-                        img.getIntColor(x, y) //normal
-                );
-                lastImage.setIntColor(x, y, rgb);
+                int rsum, gsum, bsum, asum;
+                rsum = gsum = bsum = asum = 0;
+                for (int i = 0; i < averageSIZ; ++i) {
+                    Color col = new Color(averageImage[i].getIntColor(x, y));
+                    rsum += col.getRed();
+                    gsum += col.getGreen();
+                    bsum += col.getBlue();
+                    asum += col.getAlpha();
+                }
+                int r = (int) Math.round((double) rsum / averageSIZ);
+                int g = (int) Math.round((double) gsum / averageSIZ);
+                int b = (int) Math.round((double) bsum / averageSIZ);
+                int a = (int) Math.round((double) asum / averageSIZ);
+                img.setIntColor(x, y, (new Color(r, g, b, a)).getRGB());
             }
         }
 
-        // noice reduction
-        for (int x = 1; x + 1 < w; x += 2) {
-            for (int y = 1; y + 1 < h; y += 2) {
-                int rgb = getAverage(
-                        lastImage.getIntColor(x - 1, y),
-                        lastImage.getIntColor(x + 1, y),
-                        lastImage.getIntColor(x, y - 1),
-                        lastImage.getIntColor(x, y + 1),
-                        lastImage.getIntColor(x, y)
-                );
-                lastImage.setIntColor(x, y, rgb);
-            }
-        }
-
-        return lastImage;
+        return img;
     }
 
 }
